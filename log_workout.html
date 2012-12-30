@@ -1,0 +1,228 @@
+<html>
+<style>
+.scoreboard {
+  display: inline-block;
+  width:40%;
+  height: 40%;
+  overflow-y:auto;
+  overflow-x:hidden;
+  border: 1px solid black;
+  margin: 2px;
+  border-radius: 3px 3px 3px 1px;
+  background: rgba(242, 242, 242, 0.8);
+  position: relative;
+}
+#you {
+  border: 3px solid black;
+  box-shadow: #888 5px 5px 5px;
+}
+.entry {
+   border: 1px solid rgb(100, 100, 242);
+   padding: 6px;
+   min-height: 20px;
+}
+.exercise {
+   display: inline-block;
+   max-width: 30%;
+   font-family: sans-serif;
+}
+.points {
+   display: inline-block;
+   max-width: 30%;
+   left: 40%;
+   position: absolute;
+   font-style: italic;
+   font-weight: bold;
+}
+.score {
+   font-size: 50px;
+   position: absolute;
+   padding: 2px;
+   background: rgba(200, 242, 242, 0.9);
+   right: 0px;
+   z-index: 99;
+   bottom: 0px;
+   border-radius: 5px 0px 0px 0px;
+   cursor: default;
+}
+.name {
+   position: absolute;
+   right: 0px;
+   top: 0px;
+   background: rgba(200, 242, 242, 0.9);
+   border-radius: 0px 3px 0px 0px;
+   padding: 4px;
+   font-size:30px;
+   cursor: default;
+}
+.entry:hover {
+   opacity: 0.3;
+   cursor: pointer;
+}
+.date_separator {
+  border: 1px solid black;
+  height: 3px;
+}
+.date {
+  border: 1px solid black;
+  padding: 3px;
+}
+.delete_friend:hover {
+  background: rgb(250, 50, 50);
+}
+.default_translucent {
+  opacity: 0.6;
+}
+input {
+   margin: 10px;
+   min-width: 10%;
+   max-width: 20%;
+}
+</style>
+
+<!--Slider-->
+
+
+<input type="text" id="tf" class="cleardefault default_translucent" default_value="Enter workout" value="Enter workout"></input>
+<input type="text" id="ff" class="cleardefault default_translucent" default_value="Enter friend's e-mail" value="Enter friend's e-mail"></input>
+<div id="scorecards">
+
+{% for yourdays in users %}
+<div {% if forloop.first %}id="you"{% endif %} class="scoreboard" nickname="{{yourdays.nickname}}">
+  {% for day in yourdays %}
+  <div class="date">{{day.date}}</div>
+  <div class="day">
+    {% for exercise in day %}
+     <div class="entry" {% if forloop.parentloop.first %}entry_id="{{exercise.key}}"{% endif %}>
+       <div class="exercise">
+        {{exercise.name}}
+       </div>
+       <div class="points">
+        +{{exercise.points}}
+       </div>
+     </div>
+   {% endfor %}
+  </div>
+  <div class="date_separator"></div>
+  {% endfor %}
+  <div class="score">{{yourdays.score}}</div>
+  <div class="name {% if not forloop.first %}delete_friend{% endif %}">
+     {{yourdays.name}}
+  </div>
+</div>
+{% endfor %}
+
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"> </script>
+<script>
+String.prototype.format = function() {
+  var args = arguments;
+  return this.replace(/{(\d+)}/g, function(match, number) {
+    return typeof args[number] != 'undefined'
+      ? args[number]
+      : match
+    ;
+  });
+};
+var entryHtml =  '<div class="entry" entry_id="{2}"> \
+       <div class="exercise"> \
+        {0} \
+       </div> \
+       <div class="points"> \
+        +{1} \
+       </div> \
+     </div>'
+
+var score = {{score}};
+var user_id = "{{user_id}}";
+var parser = new DOMParser();
+var Ids = {
+  SCORE_CARDS : "scorecards",
+  JSONP_REQUEST : "jsonp",
+  TEXT_FIELD : "tf",
+  FRIEND_FIELD: "ff",
+  YOUR_SCORECARD: "you"
+};
+var Classes = {
+  DAYS: "day",
+  ENTRY: "entry",
+  SCORE_CARD: "scoreboard",
+  DELETE_FRIEND: "delete_friend",
+  CLEAR_DEFAULT: "cleardefault",
+  DEFAULT_TRANSLUCENT: "default_translucent"
+};
+$('#' + Ids.TEXT_FIELD).keypress(function(e) {
+  if (e.which == 13) {
+    updateBackend();
+  }
+});
+$('#' + Ids.FRIEND_FIELD).keypress(function(e) {
+  if (e.which == 13) {
+    updateFriends();
+  }
+});
+function makeJsonpRequest(url) {
+  var $script = $('<script>');
+  $script.attr('src', url);
+  $('body').append($script);
+}
+function deleteFromBackend() {
+  var entry_id = $(this).attr('entry_id');
+  makeJsonpRequest('/delete?u=' + user_id + '&e=' + entry_id);
+  var points = $(this).children('.points').html();
+  score -= parseInt(points, 10);
+  var scorecard = $('#' + Ids.YOUR_SCORECARD);
+  scorecard.find('.score').text(score);
+  $(this).remove();
+}
+function deleteFriendFromBackend() {
+  var scorecard = $(this).parents('.' + Classes.SCORE_CARD);
+  var friend_name = scorecard.attr('nickname');
+  makeJsonpRequest('/deletefriend?u=' + user_id + '&f=' + friend_name);
+  scorecard.hide('slow');
+  scorecard.remove();
+}
+function updateFriends() {
+  var text_field = $('#' + Ids.FRIEND_FIELD);
+  var url = '/addfriend?u=' + user_id + '&f=' + text_field.val();
+  text_field.val("");
+  makeJsonpRequest(url);
+}
+function updateBackend() {
+  var text_field = $('#' + Ids.TEXT_FIELD);
+  var url = '/log?u=' + user_id + '&q=' + text_field.val().replace(' ', '+');
+  text_field.val("");
+  makeJsonpRequest(url);
+}
+function addNewEntry(points, name, nickname, entry_id) {
+  var exercise = $('<div>').html(entryHtml.format(name, points, entry_id));
+  score += points;
+  var scorecard = $('[nickname="' + nickname + '"]');
+  var logbook = scorecard.find('.' + Classes.DAYS + ":first");
+  logbook.prepend(exercise);
+  exercise.find('.' + Classes.ENTRY).click(deleteFromBackend);
+  scorecard.find('.score').text(score);
+}
+function addFriend(htmlString) {
+  var scorecard = $(htmlString);
+  $('#' + Ids.SCORE_CARDS).append(scorecard);
+}
+function clearDefault() {
+  var defaultValue = $(this).attr('default_value');
+  if ($(this).val() == defaultValue) {
+    $(this).val("");
+  }
+  $(this).removeClass(Classes.DEFAULT_TRANSLUCENT);
+  $(this).focusout(makeDefault);
+}
+function makeDefault() {
+  var defaultValue = $(this).attr('default_value');
+  $(this).val(defaultValue);
+  $(this).addClass(Classes.DEFAULT_TRANSLUCENT);
+}
+$('#' + Ids.YOUR_SCORECARD).find('.' + Classes.ENTRY).click(deleteFromBackend);
+$('.' + Classes.DELETE_FRIEND).click(deleteFriendFromBackend);
+$('.' + Classes.CLEAR_DEFAULT).focus(clearDefault);
+</script>
+</html>

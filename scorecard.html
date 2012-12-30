@@ -1,0 +1,22 @@
+<div class="scoreboard" nickname="{{yourdays.nickname}}"> \
+  {% for day in yourdays %} \
+  <div class="date">{{day.date}}</div> \
+  <div class="day"> \
+    {% for exercise in day %} \
+     <div class="entry"> \
+       <div class="exercise"> \
+        {{exercise.name}} \
+       </div> \
+       <div class="points"> \
+        +{{exercise.points}} \
+       </div> \
+     </div> \
+   {% endfor %} \
+  </div> \
+  <div class="date_separator"></div> \
+  {% endfor %} \
+  <div class="score">{{yourdays.score}}</div> \
+  <div class="name delete_friend"> \
+     {{yourdays.name}} \
+  </div> \
+</div>
